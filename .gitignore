@@ -4,5 +4,5 @@ history.json
 user_context.json
 build
 dist
-pdfs/**
+pdfs/**.pdf
 .idea
