@@ -1,7 +1,7 @@
-openai
-langchain
-langchain-community
-langchain-openai
-outlines
-pydantic
-PyPDF2
+openai==1.12.0
+langchain==0.1.9
+langchain-community==0.0.24
+langchain-openai==0.0.7
+outlines==0.0.34
+pydantic==2.6.2
+PyPDF2==3.0.1
