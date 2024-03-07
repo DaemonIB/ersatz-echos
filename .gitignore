@@ -1,0 +1,10 @@
+config.json
+TODO.md
+history.json
+user_context.json
+main.c
+main.cp311-win_amd64.pyd
+build
+ersatz_echos.spec
+ersatz_echos.exe
+dist

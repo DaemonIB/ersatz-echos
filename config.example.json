@@ -1,0 +1,12 @@
+{
+  "setting": "fantasy",
+  "openai_api_key": "YOUR_API_KEY_HERE",
+  "openai_api_base": "https://openrouter.ai/api/v1",
+  "model_name": "openai/gpt-3.5-turbo-16k",
+  "temperature": 0.7,
+  "events_count": 10,
+  "output_file": "history.json",
+  "llm_generates_year": true,
+  "start_year": 0,
+  "end_year": 2000,
+}
