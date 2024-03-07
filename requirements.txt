@@ -2,3 +2,6 @@ openai
 langchain
 langchain-community
 langchain-openai
+outlines
+pydantic
+chromadb

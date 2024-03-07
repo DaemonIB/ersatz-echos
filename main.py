@@ -1,21 +1,17 @@
 import argparse
 import json
 import logging
-import re
 from datetime import datetime
 from random import randint, sample
 
-from langchain.memory import ChatMessageHistory
-from langchain.prompts.chat import (
-    ChatPromptTemplate,
-    HumanMessagePromptTemplate,
-    SystemMessagePromptTemplate,
-)
-from langchain_core.prompts import MessagesPlaceholder
-from langchain_core.runnables.history import RunnableWithMessageHistory
-from langchain_openai import ChatOpenAI
+import outlines
+from outlines import models
+from outlines.models.openai import OpenAIConfig
+from pydantic import BaseModel, Field, ValidationError
 
-logging.getLogger().setLevel(logging.INFO)
+logger = logging.getLogger('ersatz_echos')
+logger.setLevel(logging.INFO)
+logger.addHandler(logging.StreamHandler())
 
 # Read the configuration from a JSON file
 with open('config.json', 'r') as config_file:
@@ -23,6 +19,36 @@ with open('config.json', 'r') as config_file:
 
 with open('user_context.json', 'r') as file:
     context = json.load(file)
+
+
+class Event(BaseModel):
+    year: int = Field(default=0,
+                      gt=0,
+                      description="The year the event starts",
+                      examples=["0", "2050", "300", "8000", "70"])
+    scale: str = Field(default="Period",
+                       pattern=r'(?:Period|Middling|Scene)',
+                       description="""
+    Periods are the beginning of large events, middlings are specific occurrences within Periods that move the \
+    narrative forward, and scenes are the most granular level, detailing specific moments within Events where \
+    characters interact and specific outcomes are determined. Descriptions should take into \
+    account the scale of the event being described.
+    """)
+    length: int = Field(default=1,
+                        gt=0,
+                        description="The length in years of the event",
+                        examples=["0", "2050", "300", "8000", "70"])
+    event: str = Field(default="",
+                       description="The name of the event",
+                       examples=["Eruption of Mount Hotenow",
+                                 "Year of Blue Fire",
+                                 "The Sundering",
+                                 "The Herald",
+                                 "Acquisitions Incorporated",
+                                 "The Wild Beyond the Witchlight",
+                                 "Journeys Through the Radiant Citadel"])
+    description: str = Field(default="",
+                             description="The description of the event")
 
 
 def create_context_prompt():
@@ -34,42 +60,24 @@ def create_context_prompt():
     return prompt
 
 
-system_template = (
-        """You are a world history creation bot, you are creating fake history for a {setting} setting.\n Your 
-        response should be in the following format Year: <year> Scale: <scale> Length: <length_in_years> Event: 
-        <event_name> Description: <event_description>\n Generate events at all scales which include periods, 
-        middlings, and scenes. Periods are the beginning of large events, middlings are specific occurrences within 
-        Periods that move the narrative forward, and scenes are the most granular level, detailing specific moments 
-        within Events where characters interact and specific outcomes are determined. Descriptions should take into 
-        account the scale of the event being described.\n"""
-        + create_context_prompt()
-)
-system_message_prompt = SystemMessagePromptTemplate.from_template(system_template)
+@outlines.prompt
+def create_system_prompt(setting, create_context, model_schema):
+    """You are a world history creation bot, you are creating fake history for a {{setting}} setting.
 
-human_template = "{text}"
-human_message_prompt = HumanMessagePromptTemplate.from_template(human_template)
+    The response should follow this JSON format {{model_schema | schema}}
 
-chat_prompt = ChatPromptTemplate.from_messages(
-    [system_message_prompt,
-     MessagesPlaceholder(variable_name="chat_history"),
-     human_message_prompt]
-)
+    {{create_context}}
+    """
 
-ephemeral_chat_history = ChatMessageHistory()
 
-chat = ChatOpenAI(temperature=config['temperature'],
-                  openai_api_key=config['openai_api_key'],
-                  openai_api_base=config['openai_api_base'],
-                  model_name=config['model_name'])
-
-chain = chat_prompt | chat
-
-chain_with_message_history = RunnableWithMessageHistory(
-    chain,
-    lambda session_id: ephemeral_chat_history,
-    input_messages_key="text",
-    history_messages_key="chat_history",
-)
+def create_event_model(setting):
+    system_prompt = create_system_prompt(setting, create_context_prompt(), Event)
+    model = models.openai_compatible_api(model_name=config['model_name'], api_key=config['openai_api_key'],
+                                         base_url=config['openai_api_base'],
+                                         config=OpenAIConfig(temperature=config['temperature'],
+                                                             response_format={"type": "json_object"}),
+                                         system_prompt=system_prompt)
+    return model
 
 
 # Implement an automatic_palette function to generate themes
@@ -119,7 +127,7 @@ def generate_year(start_year, end_year):
 
 # TODO: Move as much of this as possible into the system prompt to prevent it taking up memory
 # Function to generate historical events using LangChain and OpenAI Chat API
-def generate_event(start_year, num_events, end_year, llm_generates_year):
+def generate_event(start_year, num_events, end_year, llm_generates_year, history):
     prompt = ""
     palette = automatic_palette()
     palette_prompt = f"Include these themes {palette['include']} and exclude these themes {palette['exclude']}\n"
@@ -130,7 +138,11 @@ def generate_event(start_year, num_events, end_year, llm_generates_year):
     event_information_prompt = f"Events will be generated up to year {end_year}, {limit_prompt}\n"
     prompt += event_information_prompt
 
-    year = "Unknown"
+    # Include the current sorted history in the prompt
+    history_prompt = "Current history:\n"
+    for event in sorted(history, key=lambda x: x['year']):
+        history_prompt += f"{event['year']}: {event['event']}\n"
+    prompt += history_prompt
 
     # Generate the event description based on the event type
     if llm_generates_year:
@@ -139,33 +151,38 @@ def generate_event(start_year, num_events, end_year, llm_generates_year):
         year = generate_year(start_year, end_year)
         prompt += f"Generate a historical event description for the year {year}:"
 
-    response = chain_with_message_history.invoke(
-        {"setting": config['setting'], "text": prompt},
-        {"configurable": {"session_id": "unused"}},
-    )
+    model = create_event_model(config['setting'])
+    generator = outlines.generate.text(model)
+
+    try_generate = True
+
+    raw_event_response = ""
+    event_response = Event()
+    while try_generate:
+        try:
+            raw_event_response = generator(prompt)
+            event_response: Event = Event.parse_raw(raw_event_response)
+            try_generate = False
+        except ValidationError:
+            logger.debug("JSON formatting failure, trying again.")
+            continue
 
     # Extract year from the response if LLM generates it
-    if llm_generates_year:
-        response_text = response.content
-        year_match = re.search(r'Year: (\d+)', response_text)
-        if year_match:
-            year = int(year_match.group(1))
-        else:
-            logging.warning("Year not found in LLM response. Using current year.")
+    year = event_response.year
 
-    return year, response
+    return year, raw_event_response
 
 
 # Function to create the history JSON object
 def create_history(start_year, end_year, num_events=10, llm_generates_year=True):
     history = []
     for i in range(num_events):
-        current_year, event = generate_event(start_year, num_events, end_year, llm_generates_year)
-        logging.info(event)
+        current_year, event = generate_event(start_year, num_events, end_year, llm_generates_year, history)
+        logger.info(event)
         history.append({
             "id": i + 1,
             "year": current_year,
-            "event": event.content,
+            "event": event,
             "timestamp": datetime.utcnow().isoformat()
         })
     return history
