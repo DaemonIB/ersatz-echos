@@ -49,7 +49,7 @@ Ersatz Echos is an AI-powered history generator that creates rich, structured ti
 
 Run the Python script:
 ```
-python main.py --events 10 --output history.json
+python main.py --output history.json
 ```
 
 The generated history will be saved to the file specified with the `--output` flag, or `history.json` if not specified.
