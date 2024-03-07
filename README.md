@@ -47,30 +47,12 @@ Ersatz Echos is an AI-powered history generator that creates rich, structured ti
 
 ### Usage
 
-#### Windows
-
-Run the executable:
-```
-ersatz_echos.exe
-```
-
-#### Linux/Mac
-
 Run the Python script:
 ```
 python main.py --events 10 --output history.json
 ```
 
 The generated history will be saved to the file specified with the `--output` flag, or `history.json` if not specified.
-
-### Compiling
-
-To compile the project into an executable, run:
-```
-compile.bat
-```
-
-This will create an `.exe` file in the `dist` folder and copy it to the working directory.
 
 ## Configuration
 

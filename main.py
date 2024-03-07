@@ -277,7 +277,8 @@ def main():
 
 
 if __name__ == "__main__":
-    if config.document_extraction:
+    document_extraction = config.get('document_extraction', False)
+    if document_extraction:
         extract_information_from_pdfs('pdfs')
 
     main()
