@@ -3,12 +3,17 @@ import json
 import outlines
 from outlines import models
 from outlines.models.openai import OpenAIConfig
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class ContextItem(BaseModel):
-    name: str
-    description: str
+    name: str = Field(description="The proper name of the entity",
+                      examples=["Sir John Edwards", "London", "Canada", "The organization of shadows", "Monarchy"])
+    description: str = Field(description="A description of the entity",
+                             examples=["King of Evermore, a benevolent ruler with a mysterious past.",
+                                       "Oversees ancient laws and magic within the Dark Forest.",
+                                       "Control trade and commerce within the kingdom.",
+                                       "A lost language believed to hold key to untold magic and history."])
 
 
 # Read the configuration from a JSON file

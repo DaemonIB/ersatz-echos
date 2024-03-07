@@ -4,4 +4,4 @@ langchain-community
 langchain-openai
 outlines
 pydantic
-chromadb
+PyPDF2

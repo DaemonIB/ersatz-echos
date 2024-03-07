@@ -1,6 +1,7 @@
 import argparse
 import json
 import logging
+import uuid
 from datetime import datetime
 from random import randint, sample
 
@@ -8,6 +9,9 @@ import outlines
 from outlines import models
 from outlines.models.openai import OpenAIConfig
 from pydantic import BaseModel, Field, ValidationError
+import os
+import PyPDF2
+from context_creator import ContextItem
 
 logger = logging.getLogger('ersatz_echos')
 logger.setLevel(logging.INFO)
@@ -128,7 +132,8 @@ def generate_year(start_year, end_year):
 # TODO: Move as much of this as possible into the system prompt to prevent it taking up memory
 # Function to generate historical events using LangChain and OpenAI Chat API
 def generate_event(start_year, num_events, end_year, llm_generates_year, history):
-    prompt = ""
+    # Prevents the LLM from getting stuck outputting the same results in a deterministic loop
+    prompt = "" + str(uuid.uuid4()) + "\n"
     palette = automatic_palette()
     palette_prompt = f"Include these themes {palette['include']} and exclude these themes {palette['exclude']}\n"
     prompt += palette_prompt
@@ -196,6 +201,60 @@ def save_to_json(history, filename):
         json.dump(sorted_history, f, indent=4)
 
 
+@outlines.prompt
+def create_extraction_system_prompt(model_schema):
+    """You are a data extraction system, designed to extract and transform entities from pdfs into other formats.
+
+    If no entities are detected, return nothing.
+
+    The response should follow this JSON format {{model_schema | schema}}
+    """
+
+
+def create_extraction_model():
+    system_prompt = create_extraction_system_prompt(ContextItem)
+    model = models.openai_compatible_api(model_name=config['model_name'], api_key=config['openai_api_key'],
+                                         base_url=config['openai_api_base'],
+                                         config=OpenAIConfig(temperature=config['temperature'],
+                                                             response_format={"type": "json_object"}),
+                                         system_prompt=system_prompt)
+    return model
+
+
+def extract_information(text, category_name, model_schema):
+    prompt = f"Extract entities that match the '{category_name}' from the following text:\n\n{text}"
+
+    model = create_extraction_model()
+    generator = outlines.generate.text(model)
+
+    raw_response = generator(prompt)
+    extracted_info = model_schema.parse_raw(raw_response)
+
+    return extracted_info
+
+
+def extract_information_from_pdfs(folder_path):
+    for category, _ in context.items():
+        context[category] = []
+
+    # Iterate through each PDF in the folder
+    for filename in os.listdir(folder_path):
+        if filename.endswith('.pdf'):
+            file_path = os.path.join(folder_path, filename)
+
+            # Open the PDF file and read its text
+            with open(file_path, 'rb') as pdf_file:
+                pdf_reader = PyPDF2.PdfReader(pdf_file)
+                pdf_text = ''
+                for page in range(len(pdf_reader.pages)):
+                    pdf_text += pdf_reader.pages[page].extract_text()
+
+            # Iterate through the different context categories
+            for category, _ in context.items():
+                extracted_info = extract_information(pdf_text, category, ContextItem)
+                context[category].append(extracted_info)
+
+
 # Main function to run the application
 def main():
     parser = argparse.ArgumentParser(description="Generate a fictional history timeline using AI.")
@@ -218,4 +277,7 @@ def main():
 
 
 if __name__ == "__main__":
+    if config.document_extraction:
+        extract_information_from_pdfs('pdfs')
+
     main()

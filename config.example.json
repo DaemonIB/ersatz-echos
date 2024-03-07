@@ -8,5 +8,6 @@
   "output_file": "history.json",
   "llm_generates_year": false,
   "start_year": 0,
-  "end_year": 2000
+  "end_year": 2000,
+  "document_extraction": false
 }

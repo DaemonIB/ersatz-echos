@@ -1,6 +1,6 @@
 from distutils.core import setup
+
 from Cython.Build import cythonize
-from PyInstaller.building.datastruct import Tree
 
 setup(
     ext_modules = cythonize("main.py",
