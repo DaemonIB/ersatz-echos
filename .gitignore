@@ -9,3 +9,4 @@ ersatz_echos.spec
 ersatz_echos.exe
 dist
 pdfs/**
+.idea
