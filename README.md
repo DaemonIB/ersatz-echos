@@ -1,38 +1,91 @@
 # Ersatz Echos
 
-## Running
+Ersatz Echos is an AI-powered history generator that creates rich, structured timelines for fictional worlds. With customizable parameters and the ability to draw inspiration from user-provided documents, Ersatz Echos crafts unique histories spanning centuries or millennia. The tool outputs its generated histories in a structured JSON format, making it easy to integrate with other world-building applications. Whether you're a game developer, novelist, or simply a creative enthusiast, Ersatz Echos provides a foundation for building immersive, consistent fictional universes.
 
-### Pre-requisites
-You will need access to an API, whether that be OpenAI, OpenRouter, etc...
-Clone or download the repo
-Copy `user_context.example.json` to `user_context.json`
-Copy `config.example.json` to `config.json`
-If you want to provide some information to the LLM to base its timeline off of do the following:
-1. Copy `user_context.example.json` to `user_context.json`
-2. Edit `user_context.json` as needed and replace the sample data with your own data
-Edit `config.json` replace `YOUR_API_KEY_HERE` with your LLM API key
+## Features
 
-### Run
-Windows
-* Run `ersatz_echos.exe`
+- AI-driven history generation using advanced language models
+- Customizable timeline parameters (start year, end year, number of events, etc..)
+- Structured JSON output for easy integration with other tools
+- Experimental features for enhanced world-building capabilities
+  - Ability to extract information from user-provided PDF documents for added context
 
-Linux/Mac
-* Run ```python main.py --events 10 --output history.json```
+## Getting Started
 
-After running a file matching the name passed to `--output` will be generated or `history.json` if none is specified.
+### Prerequisites
 
-## Compiling
-Run ```compile.bat```
+- Access to an API (OpenAI, OpenRouter, etc.)
+- Python 3.11+ installed
+
+### Installation
+
+1. Clone the repository:
+   ```
+   git clone https://github.com/DaemonIB/ersatz-echos.git
+   ```
+
+2. Navigate to the project directory:
+   ```
+   cd ersatz-echos
+   ```
+
+3. Install the required dependencies:
+   ```
+   pip install -r requirements.txt
+   ```
+
+4. Copy the example configuration files:
+   ```
+   cp user_context.example.json user_context.json
+   cp config.example.json config.json
+   ```
+
+5. Edit `config.json` and replace `YOUR_API_KEY_HERE` with your LLM API key.
+
+6. (Optional) If you want to provide additional context for the LLM to base the timeline on:
+   - Edit `user_context.json` and replace the sample data with your own data.
+
+### Usage
+
+#### Windows
+
+Run the executable:
+```
+ersatz_echos.exe
+```
+
+#### Linux/Mac
+
+Run the Python script:
+```
+python main.py --events 10 --output history.json
+```
+
+The generated history will be saved to the file specified with the `--output` flag, or `history.json` if not specified.
+
+### Compiling
+
+To compile the project into an executable, run:
+```
+compile.bat
+```
+
 This will create an `.exe` file in the `dist` folder and copy it to the working directory.
 
+## Configuration
+
+- `config.json`: Contains settings for the LLM API and other parameters.
+- `user_context.json`: Allows you to provide additional context for the LLM to base the timeline on. The structure is generic, and any top-level category can be used (e.g., `Locations`, `Characters`, `Funny Hair Styles`). Individual entities within each category need a `name` and `description`.
+
 ## Notes
-* Model selection
-  * The default model has been selected based on cost/ability to produce json. For OpenAI `openai/gpt-3.5-turbo-0125` 
-    is compatible along with the models specified here: https://platform.openai.com/docs/api-reference/chat/create#chat-create-response_format
-  * Other models will likely still work, but their success rate may be lower, so your mileage may vary.
-* User Context
-  * The `user_context.json` has a generic structure, any top level category can be used (`Locations`, `Characters`, `Funny Hair Styles`)
-  and individual entities within that category just need a `name` and `description` regardless of "what" they actually are.
+
+- The default model has been selected based on cost and ability to produce JSON. For OpenAI, `openai/gpt-3.5-turbo-0125` is compatible, along with the models specified [here](https://platform.openai.com/docs/api-reference/chat/create#chat-create-response_format).
+- Other models may work, but their success rate may be lower.
 
 ## Experimental Features
-* Document Extraction - Enabled via the `document_extraction` flag.
+
+- Document Extraction: Enabled via the `document_extraction` flag in `config.json`.
+
+## License
+
+This project is licensed under [Apache-2.0](LICENSE).
